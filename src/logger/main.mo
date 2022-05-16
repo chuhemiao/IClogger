@@ -11,20 +11,22 @@ actor class TextLogger() = this {
   stable var record_num = 0;
   var logger_canister_list : Buffer.Buffer<LoggerCanisterType> = Buffer.Buffer<LoggerCanisterType>(0);
 
-
   func create_canister() : async () {
-    logger_canister_list.add(await LoggerCanister.LoggerCanister(Principal.fromActor(this)));
+    if (record_num == 0) {
+      logger_canister_list.add(await LoggerCanister.LoggerCanister(Principal.fromActor(this)));
+    };
+    if (record_num == PAGE_SIZE) {
+      logger_canister_list.add(await LoggerCanister.LoggerCanister(Principal.fromActor(this)));
+      record_num := 0;
+    }
   };
 
   public func append(msgs: [Text]) {
-    if (record_num == PAGE_SIZE) {
-      logger_canister_list.get(logger_canister_list.size() - 1).append(msgs);
+    for (msg in msgs.vals()) {
       await create_canister();
-      record_num := 0;
-      return;
+      logger_canister_list.get(logger_canister_list.size() - 1).append(msgs);
+      record_num += 1
     };
-    logger_canister_list.get(logger_canister_list.size() - 1).append(msgs);
-    record_num += 1;
   };
 
   public shared func view(from: Nat, to: Nat) : async [Text] {
